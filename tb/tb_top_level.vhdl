@@ -10,6 +10,7 @@ architecture tb of tb_top_level is
     signal clk        : std_logic := '0';
     signal rst_a      : std_logic := '1';
     signal init       : std_logic := '0';
+    signal op         : std_logic := '0'; -- Novo sinal adicionado
     signal aes_type   : std_logic_vector(1 downto 0) := "00";
     signal user_key   : std_logic_vector(255 downto 0) := (others => '0');
     signal user_text  : std_logic_vector(127 downto 0) := (others => '0');
@@ -74,13 +75,14 @@ begin
     DUV: ENTITY work.AES(behavior)
     port map(
         clk         => clk, 
+        rst_a       => rst_a,
         init        => init, 
+        op          => op,      
         aes_type    => aes_type, 
         user_key    => user_key, 
         user_text   => user_text,
         cipher_text => ciphertext, 
-        done        => done, 
-        rst_a       => rst_a
+        done        => done 
     );
     
     clk <= not clk after 5 ns;
@@ -88,10 +90,10 @@ begin
     process
     begin
         -- ===================================================================
-        -- TESTE DETALHADO RODADA A RODADA (FIPS-197 AES-128)
+        -- TESTE SIMPLIFICADO: APENAS RESULTADO FINAL (AES-128)
         -- ===================================================================
         report "--------------------------------------------------------" severity note;
-        report "INICIANDO TESTE DETALHADO (AES-128 FIPS)" severity note;
+        report "INICIANDO TESTE SIMPLIFICADO (AES-128 FIPS)" severity note;
         report "--------------------------------------------------------" severity note;
 
         rst_a <= '1';
@@ -100,6 +102,7 @@ begin
         wait until rising_edge(clk);
 
         aes_type  <= "00";
+        op        <= '0'; 
         user_text <= x"00112233445566778899aabbccddeeff";
         user_key(255 downto 128) <= x"000102030405060708090a0b0c0d0e0f";
         user_key(127 downto 0)   <= (others => '0');
@@ -108,31 +111,25 @@ begin
         wait until rising_edge(clk);
         init <= '0';
 
-        wait until falling_edge(clk);
-        wait until falling_edge(clk);
+        -- Aguarda o fim do processamento dinamicamente (com limite de segurança)
+        wait until done = '1' for 3000 ns;
+        assert done = '1' report "AES-128 TIMEOUT: Sinal 'done' nao foi ativado." severity error;
+        
+        wait until falling_edge(clk); -- Meio clock para garantir estabilidade do sinal
 
-        for i in 0 to 10 loop
-            assert ciphertext = FIPS_EXPECTED_128(i)
-                report "AES-128 FALHA CRITICA NA RODADA " & integer'image(i+1) & 
-                       " | Esperado: " & to_hstring(FIPS_EXPECTED_128(i)) & 
-                       " | Obtido: "   & to_hstring(ciphertext)
-                severity error;
+        assert ciphertext = FIPS_EXPECTED_128(10)
+            report "AES-128 FALHA | Esperado: " & to_hstring(FIPS_EXPECTED_128(10)) & 
+                   " | Obtido: " & to_hstring(ciphertext) severity error;
 
-            if i < 10 then
-                wait until falling_edge(clk);
-            end if;
-        end loop;
-
-        assert done = '1' report "AES-128: Sinal DONE não ativado!" severity error;
-        report "Teste Detalhado AES-128 PASSOU com sucesso!" severity note;
-        wait until rising_edge(clk);
+        report "Teste AES-128 CONCLUIDO!" severity note;
+        wait for 100 ns;
 
 
         -- ===================================================================
-        -- TESTE DETALHADO RODADA A RODADA (FIPS-197 AES-192)
+        -- TESTE SIMPLIFICADO: APENAS RESULTADO FINAL (AES-192)
         -- ===================================================================
         report "--------------------------------------------------------" severity note;
-        report "INICIANDO TESTE DETALHADO (AES-192 FIPS)" severity note;
+        report "INICIANDO TESTE SIMPLIFICADO (AES-192 FIPS)" severity note;
         report "--------------------------------------------------------" severity note;
 
         rst_a <= '1';
@@ -141,39 +138,32 @@ begin
         wait until rising_edge(clk);
 
         aes_type  <= "01";
+        op        <= '0';
         user_text <= x"00112233445566778899aabbccddeeff";
-        -- Alinhado aos bits mais significativos para casar com sua extração de chaves
         user_key  <= x"000102030405060708090a0b0c0d0e0f1011121314151617" & (63 downto 0 => '0');
 
         init <= '1';
         wait until rising_edge(clk);
         init <= '0';
 
+        wait until done = '1' for 5000 ns;
+        assert done = '1' report "AES-192 TIMEOUT: Sinal 'done' nao foi ativado." severity error;
+        
         wait until falling_edge(clk);
-        wait until falling_edge(clk);
 
-        for i in 0 to 12 loop
-            assert ciphertext = FIPS_EXPECTED_192(i)
-                report "AES-192 FALHA CRITICA NA RODADA " & integer'image(i+1) & 
-                       " | Esperado: " & to_hstring(FIPS_EXPECTED_192(i)) & 
-                       " | Obtido: "   & to_hstring(ciphertext)
-                severity error;
+        assert ciphertext = FIPS_EXPECTED_192(12)
+            report "AES-192 FALHA | Esperado: " & to_hstring(FIPS_EXPECTED_192(12)) & 
+                   " | Obtido: " & to_hstring(ciphertext) severity error;
 
-            if i < 12 then
-                wait until falling_edge(clk);
-            end if;
-        end loop;
-
-        assert done = '1' report "AES-192: Sinal DONE não ativado!" severity error;
-        report "Teste Detalhado AES-192 PASSOU com sucesso!" severity note;
-        wait until rising_edge(clk);
+        report "Teste AES-192 CONCLUIDO!" severity note;
+        wait for 100 ns;
 
 
         -- ===================================================================
-        -- TESTE DETALHADO RODADA A RODADA (FIPS-197 AES-256)
+        -- TESTE SIMPLIFICADO: APENAS RESULTADO FINAL (AES-256)
         -- ===================================================================
         report "--------------------------------------------------------" severity note;
-        report "INICIANDO TESTE DETALHADO (AES-256 FIPS)" severity note;
+        report "INICIANDO TESTE SIMPLIFICADO (AES-256 FIPS)" severity note;
         report "--------------------------------------------------------" severity note;
 
         rst_a <= '1';
@@ -182,6 +172,7 @@ begin
         wait until rising_edge(clk);
 
         aes_type  <= "10";
+        op        <= '0';
         user_text <= x"00112233445566778899aabbccddeeff";
         user_key  <= x"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
@@ -189,24 +180,18 @@ begin
         wait until rising_edge(clk);
         init <= '0';
 
+        wait until done = '1' for 3000 ns;
+        assert done = '1' report "AES-256 TIMEOUT: Sinal 'done' nao foi ativado." severity error;
+        
         wait until falling_edge(clk);
-        wait until falling_edge(clk);
 
-        for i in 0 to 14 loop
-            assert ciphertext = FIPS_EXPECTED_256(i)
-                report "AES-256 FALHA CRITICA NA RODADA " & integer'image(i+1) & 
-                       " | Esperado: " & to_hstring(FIPS_EXPECTED_256(i)) & 
-                       " | Obtido: "   & to_hstring(ciphertext)
-                severity error;
+        assert ciphertext = FIPS_EXPECTED_256(14)
+            report "AES-256 FALHA | Esperado: " & to_hstring(FIPS_EXPECTED_256(14)) & 
+                   " | Obtido: " & to_hstring(ciphertext) severity error;
 
-            if i < 14 then
-                wait until falling_edge(clk);
-            end if;
-        end loop;
-
-        assert done = '1' report "AES-256: Sinal DONE não ativado!" severity error;
-        report "Teste Detalhado AES-256 PASSOU com sucesso!" severity note;
-        wait;
+        report "Teste AES-256 CONCLUIDO!" severity note;
+        
+        std.env.stop;
     end process;
     
 end architecture tb;

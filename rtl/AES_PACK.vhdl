@@ -33,7 +33,7 @@ package AES_pack is
     function vetor128bits_to_matriz_4x4(input : std_logic_vector(127 downto 0)) return matriz_4x4; -- funcao que converte o vetor para matriz,
         -- com a ressalva de que o preenchimento e feito por colunas
     
-    function xtime(b : std_logic_vector(7 downto 0)) return std_logic_vector; -- funcao de multiplicar por 2 e evitar overflow com xor (nicolas usa essa tambem)
+    function xtime(b : std_logic_vector(7 downto 0)) return std_logic_vector; 
     
     function matriz_4x4_to_128bits(input: matriz_4x4) return std_logic_vector;
 

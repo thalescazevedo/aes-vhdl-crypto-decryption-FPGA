@@ -23,6 +23,12 @@ architecture behavior of AES is
     signal s_rp            : std_logic;
     signal s_ilr           : std_logic;
     signal s_i0            : std_logic;
+    -- novos
+    signal s_read_memory   : std_logic;
+    signal s_R_WORD        : std_logic;
+    signal s_rcon_idx      : integer range 1 to 10;
+    signal s_keyWord       : integer;
+    signal s_s_subbytes    : std_logic;
 
 begin
 
@@ -36,7 +42,13 @@ begin
             round_counter => s_round_counter,
             rp            => s_rp,
             ilr           => s_ilr,
-            i0            => s_i0
+            i0            => s_i0,
+            --novos sinais
+            read_memory   => s_read_memory,
+            R_WORD        => s_R_WORD,
+            rcon_idx      => s_rcon_idx,
+            keyWord       => s_keyWord,
+            s_subbytes    => s_s_subbytes
         );
 
     inst_AES_BO: entity work.AES_BO(behavior)
@@ -50,7 +62,14 @@ begin
             round_counter => s_round_counter,
             rp            => s_rp,
             ilr           => s_ilr,
-            i0            => s_i0
+            i0            => s_i0,
+            init          => init,
+            --novos sinais
+            read_memory   => s_read_memory,
+            R_WORD        => s_R_WORD,
+            rcon_idx      => s_rcon_idx,
+            keyWord       => s_keyWord,
+            s_subbytes    => s_s_subbytes
         );
 
 end architecture behavior;

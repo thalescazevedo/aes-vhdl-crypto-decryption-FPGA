@@ -16,34 +16,43 @@ entity AES_BC is
         round_counter : out std_logic_vector(3 downto 0);
         rp            : out std_logic;      
         ilr           : out std_logic;      
-        i0            : out std_logic      
-
+        i0            : out std_logic;  
+        read_memory   : out std_logic;
+        R_WORD        : out std_logic;
+        rcon_idx      : out integer range 1 to 10;
+        keyWord       : out integer;
+        s_subbytes    : out std_logic
     );
 end entity AES_BC;
 
 architecture behavior of AES_BC is
-    Type estado is (S0, KE, KE_EXP1, KE_EXP2, KE_EXP3, Scalc, Sresult);
+    Type estado is (S0, S1, KE, KE_EXP1, KE_EXP2, KE_EXP3, OPWAIT, SC1, SC2, Sresult);
     signal EAtual  : estado := S0;
     signal PEstado : estado := S0;
     
     signal s_counter : unsigned(3 downto 0) := (others => '0');
     signal number_of_rounds : integer := 10;
-    signal keyword  : integer := 4;
-    signal flagmod0 : std_logic;
-    signal flagmod4 : std_logic;
+    signal s_keyword        : integer := 4;
+    signal flagmod0         : std_logic;
+    signal flagmod4         : std_logic;
+    signal s_rconIDX        : integer range 1 to 10;
+
 begin
 
-    round_counter <= std_logic_vector(s_counter);
-    number_of_rounds <= calc_nestados(aes_type);
-    flagmod0 <= is_mod_nk(keyword,aes_type);
-    flagmod4 <= is_aes256_mod_4(keyword,aes_type);
+    round_counter       <= std_logic_vector(s_counter);
+    number_of_rounds    <= calc_nestados(aes_type);
+    flagmod0            <= is_mod_nk(s_keyword,aes_type);
+    flagmod4            <= is_aes256_mod_4(s_keyword,aes_type);
+    rcon_idx            <= s_rconIDX;
+    keyword             <= s_keyWord;
 
     CRG: process (clk, rst_a)
     BEGIN
         if rst_a = '1' then
             EAtual <= S0;
             s_counter <= "0000";
-            keyword := 4;
+            s_keyword <= 4;
+            s_rconIDX <= 1;
         
         elsif rising_edge(clk) then
             EAtual <= PEstado;
@@ -51,10 +60,20 @@ begin
             if EAtual = S0 then 
                 s_counter <= "0000";
 
-            elsif EAtual = KE then
+            elsif EAtual = S1 then
+                s_keyword <= get_nk(aes_type);
+                s_rconIDX <= 1;
                 s_counter <= "0001";
-            
-            elsif EAtual = Scalc then
+
+            elsif EAtual = KE_EXP3 then
+                s_keyword <= s_keyword + 1;
+                if (flagmod0 = '1') then
+                    if (s_rconIDX < 10) then
+                        s_rconIDX <= s_rconIDX + 1;
+                    end if;
+                end if;
+
+            elsif EAtual = SC2 then
                 if to_integer(s_counter) < number_of_rounds then
                     s_counter <= s_counter + 1;
                 end if;
@@ -63,19 +82,22 @@ begin
         end if;
     end process;
         
-    LPE: process (EAtual, init, s_counter, number_of_rounds, keyword, aes_type)
+    LPE: process (EAtual, init, s_counter, number_of_rounds, s_keyword, aes_type, flagmod0, flagmod4)
     BEGIN
         CASE EAtual is
             when S0 =>
                 if init = '1' then
-                    PEstado <= KE;
+                    PEstado <= S1;
                 else 
                     PEstado <= S0;
                 end if;
             
+            when S1 =>
+                PEstado <= KE;
+
             when KE =>
 
-                if ((is_mod_nk(keyword,aes_type)) or (is_aes256_mod_4(keyword,aes_type))) then
+                if ((flagmod0 = '1') or (flagmod4 = '1')) then
                     PEstado <= KE_EXP1;
 
                 else PEstado <= KE_EXP3;
@@ -88,17 +110,22 @@ begin
                 PEstado <= KE_EXP3;
 
             when KE_EXP3 =>
-                if (keyword < (4 * (get_nk(aes_type) + 7))) then
+                if (s_keyword < (4 * (get_nk(aes_type) + 7))-1) then
                     PEstado <= KE;
-                    keyword := keyword + 1;
-                else PEstado <= Scalc;
+                else PEstado <= OPWAIT;
                 end if;
 
-            when Scalc =>
-                if to_integer(s_counter) < number_of_rounds then
-                    PEstado <= Scalc;
+            when OPWAIT => 
+                PEstado <= SC1;
+
+            when SC1 =>
+                PEstado <= SC2;
+
+            when SC2 =>
+                if to_integer(s_counter) >= number_of_rounds then
+                    PEstado <= Sresult;
                 else
-                    PEstado <= Sresult; 
+                    PEstado <= OPWAIT; 
                 end if;
             
             when Sresult => 
@@ -111,19 +138,38 @@ begin
     
     LS: process (EAtual, s_counter, number_of_rounds)
     BEGIN
-        rp        <= '0';
-        done      <= '0';
-        i0        <= '0';
-        ilr       <= '0';
-        
+        rp              <= '0';
+        done            <= '0';
+        i0              <= '0';
+        ilr             <= '0';
+        R_WORD          <= '0';
+        read_memory     <= '0';
+        s_subbytes      <= '0';
+
         CASE EAtual is
             when S0 => null;
             
-            when S1 => 
+            when S1 =>
                 i0 <= '1';
                 rp <= '1';
-            
-            when Scalc => 
+
+            when KE => null;
+
+            when KE_EXP1 => 
+                read_memory <= '1';
+
+            when KE_EXP2 => null;
+                
+            when KE_EXP3 =>
+                R_WORD <= '1';
+
+            when OPWAIT =>
+                s_subbytes <= '1';
+
+            when SC1 => 
+                null;
+
+            when SC2 => 
                 rp <= '1';
                 if to_integer(s_counter) = number_of_rounds then
                     ilr <= '1';

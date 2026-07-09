@@ -17,7 +17,8 @@ entity AES_BO_CRIPTOGRAFIA is
         round_counter   : in std_logic_vector(3 downto 0);
         rp              : in std_logic;      
         ilr             : in std_logic;      
-        i0              : in std_logic       
+        i0              : in std_logic;   
+        s_subbytes      : in std_logic    
     );
 end entity AES_BO_CRIPTOGRAFIA;
 
@@ -40,7 +41,9 @@ begin
     round0_cipher <= vetor128bits_to_matriz_4x4(user_key(255 downto 128) xor user_text);
 
     SB: entity work.subBytes(behavior)
-        port map (  in_matriz       => partial_cipher,
+        port map (  clk             => clk,
+                    read_ram_sbox   => s_subbytes,
+                    in_matriz       => partial_cipher,
                     out_matriz      => partial_cipher_subbytes
         );
     

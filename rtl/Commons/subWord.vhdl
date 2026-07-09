@@ -16,6 +16,7 @@ end entity subWord;
 
 architecture behavior of subWord is
 
+    begin
     SBOX_1: entity work.sbox_memory_dualport
         port map(
             clk           => clk, 
