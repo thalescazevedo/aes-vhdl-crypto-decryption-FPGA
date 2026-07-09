@@ -1,0 +1,30 @@
+{
+    "grupo": {
+        "nome": "grupo A",
+        "alunos": [
+          {"nome": "Artur de Faria Rodrigo", "matricula": "25200395"},
+          {"nome": "João Pedro Floriano", "matricula": "25200369"},
+          {"nome": "Nicolas de Brito Mafra", "matricula": "25200389"},
+          {"nome": "Pedro Zumstein Bilac", "matricula": "25201469"},
+          {"nome": "Thales Campos de Azevedo", "matricula": "25201474"},
+          {"nome": "Thasio Santos Silva", "matricula": "25202238"}
+        ]
+    },
+    "quartus": {
+        "os": "Ubuntu (imagem Quartus II)",
+        "versao": "25.1std.0 Build 1129",
+        "fpga": {
+            "familia": "Cyclone IV E",
+            "dispositivo": "EP4CE40F29C7"
+        }
+    },
+    "utilizacao": {
+        "total combinational functions": 36005,
+        "dedicated logic registers": 2056,
+        "total pins": 518
+    },
+    "atraso": {
+        "Fmax": 125.63,
+        "unidade": "MHz"
+    }
+}
