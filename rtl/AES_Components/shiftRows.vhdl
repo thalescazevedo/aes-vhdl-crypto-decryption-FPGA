@@ -2,7 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.AES_pack.all;
--- não mexa na declaracao da entidade!!!!!
+
 entity shiftRows is
 
 	port(
@@ -14,7 +14,7 @@ end entity shiftRows;
 architecture behavior of shiftRows is
 
 begin
-    -- LINHA 0: Deslocamento de 0 bytes
+-- LINHA 0: Deslocamento de 0 bytes
 
 	out_matriz(0, 0) <= in_matriz(0, 0);
     out_matriz(0, 1) <= in_matriz(0, 1);

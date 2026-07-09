@@ -8,6 +8,7 @@ entity AES is
         clk        : in  std_logic;     -- ck
         rst_a      : in  std_logic;     -- reset
         init       : in  std_logic;     -- iniciar
+        op         : in  std_logic;     -- crypto or decrypto
         aes_type   : in  std_logic_vector(1 downto 0); -- 00 = aes 128, 01 = aes 192, 10 = aes 256, 11 = x
         user_key   : in  std_logic_vector(255 downto 0); -- 255 pra suportar os 3 aes em tempo de execucao entra sempre com as words na frente: wwww0000, wwwwww00, wwwwwwww.
         user_text  : in  std_logic_vector(127 downto 0); -- texto de 128 bits

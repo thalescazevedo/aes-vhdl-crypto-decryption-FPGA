@@ -10,13 +10,17 @@ package AES_pack is
     
     function calc_nestados(aes_type : std_logic_vector(1 downto 0)) return integer;
 
+    function get_nk(aes_type : std_logic_vector(1 downto 0)) return integer;
+
+    function is_mod_nk (k : integer; aes_type : std_logic_vector(1 downto 0)) return std_logic;
+
+    function is_aes256_mod_4 (k : integer; aes_type : std_logic_vector(1 downto 0)) return std_logic;
+
     type word is array(0 to 3) of std_logic_vector(7 downto 0); -- tipo para representar uma palavra de 4 bytes (32 bits) (Linha da matriz)
 
     type allKeys is array(0 to 59) of word;
 
     function RotWord(input : word) return word; -- funcao que rotaciona uma palavra para a esquerda (ex: [a0, a1, a2, a3] vira [a1, a2, a3, a0])
-    
-    function SubWord(input : word) return word; -- funcao que aplica a SBOX em cada byte da palavra (ex: [a0, a1, a2, a3] vira [SBOX[a0], SBOX[a1], SBOX[a2], SBOX[a3]])
 
     function getKeyWord(key_vec : std_logic_vector(255 downto 0); word_index : integer; key_words : integer) return word; -- funcao que extrai uma palavra da chave completa respeitando a janela util de cada AES
 
@@ -51,6 +55,58 @@ package body AES_pack is
                     return 10; 
             end case;
     end function;
+
+    function get_nk(aes_type : std_logic_vector(1 downto 0)) return integer is
+        begin
+            case aes_type is
+                when "00" => 
+                    return 4; -- AES-128
+                when "01" => 
+                    return 6; -- AES-192
+                when "10" => 
+                    return 8; -- AES-256
+                when others => 
+                    return 4; 
+            end case;
+    end function;
+
+    function is_mod_nk (k : integer; aes_type : std_logic_vector(1 downto 0)) return std_logic is
+        begin
+            -- AES-128 (Nk = 4)
+            if aes_type = "00" then
+                case k is
+                    when 4 | 8 | 12 | 16 | 20 | 24 | 28 | 32 | 36 | 40 | 44 => return '1';
+                    when others => return '0';
+                end case;
+                
+            -- AES-192 (Nk = 6)
+            elsif aes_type = "01" then
+                case k is
+                    when 6 | 12 | 18 | 24 | 30 | 36 | 42 | 48 | 54 => return '1';
+                    when others => return '0';
+                end case;
+                
+            -- AES-256 (Nk = 8)
+            else
+                case k is
+                    when 8 | 16 | 24 | 32 | 40 | 48 | 56 => return '1';
+                    when others => return '0';
+                end case;
+            end if;
+    end function;
+
+    function is_aes256_mod_4 (k : integer; aes_type : std_logic_vector(1 downto 0)) return std_logic is
+        begin
+            if aes_type = "10" then
+                case k is
+                    when 12 | 20 | 28 | 36 | 44 | 52 | 60 => return '1';
+                    when others => return '0';
+                end case;
+            else
+                return '0';
+            end if;
+    end function;
+
 
     function setWord(input : matriz_4x4; col : integer; w : word) return matriz_4x4 is
         variable r : matriz_4x4;
@@ -87,15 +143,6 @@ package body AES_pack is
         output(1) := input(2);
         output(2) := input(3);
         output(3) := input(0);
-        return output;
-    end function;
-
-    function SubWord(input : word) return word is
-        variable output : word;
-    begin
-        for i in 0 to 3 loop
-            output(i) := SBOX(to_integer(unsigned(input(i))));
-        end loop;
         return output;
     end function;
 
