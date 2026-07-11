@@ -28,7 +28,7 @@ entity AES_BC is
 end entity AES_BC;
 
 architecture behavior of AES_BC is
-    Type estado is (S0, S1, KE, KE_EXP1, KE_EXP2, KE_EXP3, OPWAIT, SC1, SC2, Sresult);
+    Type estado is (S0, S1, KE, KE_EXP1, KE_EXP2, KE_EXP3, OPWAIT, xorinitdecrypto, SC1, SC2, Sresult);
     signal EAtual  : estado := S0;
     signal PEstado : estado := S0;
     
@@ -60,19 +60,15 @@ begin
             EAtual <= PEstado;
 
             if EAtual = S0 then 
-                if op = '0' then
-                    s_counter <= "0000";
-                else
-                    s_counter <= to_unsigned(calc_nestados(aes_type)+1, 4);
-                end if;
+                s_counter <= "0000";
 
             elsif EAtual = S1 then
                 s_keyword <= get_nk(aes_type);
                 s_rconIDX <= 1;
                 if op = '0' then
                     s_counter <= "0001";
-                else
-                    s_counter <= s_counter - 1;
+                else 
+                    s_counter <= to_unsigned(calc_nestados(aes_type)+1, 4);
                 end if;
 
             elsif EAtual = KE_EXP3 then
@@ -82,6 +78,12 @@ begin
                         s_rconIDX <= s_rconIDX + 1;
                     end if;
                 end if;
+
+
+            elsif EAtual = xorinitdecrypto then
+                if op = '1' then
+                    s_counter <= s_counter - 1;
+                end if; 
 
             elsif EAtual = SC2 then
                 if op = '0' then
@@ -112,10 +114,8 @@ begin
                 PEstado <= KE;
 
             when KE =>
-
                 if ((flagmod0 = '1') or (flagmod4 = '1')) then
                     PEstado <= KE_EXP1;
-
                 else PEstado <= KE_EXP3;
                 end if;
 
@@ -128,8 +128,16 @@ begin
             when KE_EXP3 =>
                 if (s_keyword < (4 * (get_nk(aes_type) + 7))-1) then
                     PEstado <= KE;
-                else PEstado <= OPWAIT;
+                else 
+                    if op = '1' then
+                        PEstado <= xorinitdecrypto;
+                    else
+                        PEstado <= OPWAIT;
+                    end if;
                 end if;
+
+            when xorinitdecrypto =>
+                PEstado <= OPWAIT; 
 
             when OPWAIT => 
                 PEstado <= SC1;
@@ -145,7 +153,7 @@ begin
                         PEstado <= OPWAIT; 
                     end if;
                 else
-                    if to_integer(s_counter) <= 0 then
+                    if to_integer(s_counter) <= 1 then
                         PEstado <= Sresult;
                     else
                         PEstado <= OPWAIT; 
@@ -175,8 +183,10 @@ begin
             when S0 => null;
             
             when S1 =>
-                i0 <= '1';
-                rp <= '1';
+                if op = '0' then
+                    i0 <= '1';
+                    rp <= '1';
+                end if;
 
             when KE => null;
 
@@ -187,6 +197,10 @@ begin
                 
             when KE_EXP3 =>
                 R_WORD <= '1';
+
+            when xorinitdecrypto =>
+                i0 <= '1';
+                rp <= '1';
 
             when OPWAIT =>
                 if op = '0' then
@@ -205,6 +219,7 @@ begin
                         ilr <= '1';
                     end if;
                 else
+
                     if to_integer(s_counter) = 1 then
                         ilr <= '1';
                     end if;

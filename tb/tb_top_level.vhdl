@@ -1,7 +1,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use work.AES_pack.all;
+use work.roms_package.all; -- Atualizado para o package unificado
 
 entity tb_top_level is
 end entity tb_top_level;
@@ -10,7 +10,7 @@ architecture tb of tb_top_level is
     signal clk        : std_logic := '0';
     signal rst_a      : std_logic := '1';
     signal init       : std_logic := '0';
-    signal op         : std_logic := '0'; -- Novo sinal adicionado
+    signal op         : std_logic := '0'; 
     signal aes_type   : std_logic_vector(1 downto 0) := "00";
     signal user_key   : std_logic_vector(255 downto 0) := (others => '0');
     signal user_text  : std_logic_vector(127 downto 0) := (others => '0');
@@ -22,17 +22,17 @@ architecture tb of tb_top_level is
     -- =========================================================================
     type expected_array_128 is array(0 to 10) of std_logic_vector(127 downto 0);
     constant FIPS_EXPECTED_128 : expected_array_128 := (
-        0  => x"00102030405060708090a0b0c0d0e0f0", -- Start of Round 1
-        1  => x"89d810e8855ace682d1843d8cb128fe4", -- Start of Round 2
-        2  => x"4915598f55e5d7a0daca94fa1f0a63f7", -- Start of Round 3
-        3  => x"fa636a2825b339c940668a3157244d17", -- Start of Round 4
-        4  => x"247240236966b3fa6ed2753288425b6c", -- Start of Round 5
-        5  => x"c81677bc9b7ac93b25027992b0261996", -- Start of Round 6 
-        6  => x"c62fe109f75eedc3cc79395d84f9cf5d", -- Start of Round 7
-        7  => x"d1876c0f79c4300ab45594add66ff41f", -- Start of Round 8
-        8  => x"fde3bad205e5d0d73547964ef1fe37f1", -- Start of Round 9
-        9  => x"bd6e7c3df2b5779e0b61216e8b10b689", -- Start of Round 10
-        10 => x"69c4e0d86a7b0430d8cdb78070b4c55a"  -- Output Final
+        0  => x"00102030405060708090a0b0c0d0e0f0", 
+        1  => x"89d810e8855ace682d1843d8cb128fe4", 
+        2  => x"4915598f55e5d7a0daca94fa1f0a63f7", 
+        3  => x"fa636a2825b339c940668a3157244d17", 
+        4  => x"247240236966b3fa6ed2753288425b6c", 
+        5  => x"c81677bc9b7ac93b25027992b0261996",  
+        6  => x"c62fe109f75eedc3cc79395d84f9cf5d", 
+        7  => x"d1876c0f79c4300ab45594add66ff41f", 
+        8  => x"fde3bad205e5d0d73547964ef1fe37f1", 
+        9  => x"bd6e7c3df2b5779e0b61216e8b10b689", 
+        10 => x"69c4e0d86a7b0430d8cdb78070b4c55a"  -- Output Final Cripto
     );
 
     type expected_array_192 is array(0 to 12) of std_logic_vector(127 downto 0);
@@ -49,7 +49,7 @@ architecture tb of tb_top_level is
         9  => x"a906b254968af4e9b4bdb2d2f0c44336",
         10 => x"88ec930ef5e7e4b6cc32f4c906d29414",
         11 => x"afb73eeb1cd1b85162280f27fb20d585",
-        12 => x"dda97ca4864cdfe06eaf70a0ec0d7191"
+        12 => x"dda97ca4864cdfe06eaf70a0ec0d7191" -- Output Final Cripto
     );
 
     type expected_array_256 is array(0 to 14) of std_logic_vector(127 downto 0);
@@ -68,8 +68,11 @@ architecture tb of tb_top_level is
         11 => x"5f9c6abfbac634aa50409fa766677653",
         12 => x"516604954353950314fb86e401922521",
         13 => x"627bceb9999d5aaac945ecf423f56da5",
-        14 => x"8ea2b7ca516745bfeafc49904b496089"
+        14 => x"8ea2b7ca516745bfeafc49904b496089" -- Output Final Cripto
     );
+
+    -- Constante do texto original para comparar na descriptografia
+    constant ORIGINAL_TEXT : std_logic_vector(127 downto 0) := x"00112233445566778899aabbccddeeff";
 
 begin
     DUV: ENTITY work.AES(behavior)
@@ -90,10 +93,10 @@ begin
     process
     begin
         -- ===================================================================
-        -- TESTE SIMPLIFICADO: APENAS RESULTADO FINAL (AES-128)
+        -- TESTE AES-128: ENCRIPTAÇÃO
         -- ===================================================================
         report "--------------------------------------------------------" severity note;
-        report "INICIANDO TESTE SIMPLIFICADO (AES-128 FIPS)" severity note;
+        report "INICIANDO TESTE AES-128 (CRIPTOGRAFIA)" severity note;
         report "--------------------------------------------------------" severity note;
 
         rst_a <= '1';
@@ -103,7 +106,7 @@ begin
 
         aes_type  <= "00";
         op        <= '0'; 
-        user_text <= x"00112233445566778899aabbccddeeff";
+        user_text <= ORIGINAL_TEXT;
         user_key(255 downto 128) <= x"000102030405060708090a0b0c0d0e0f";
         user_key(127 downto 0)   <= (others => '0');
 
@@ -111,25 +114,47 @@ begin
         wait until rising_edge(clk);
         init <= '0';
 
-        -- Aguarda o fim do processamento dinamicamente (com limite de segurança)
         wait until done = '1' for 3000 ns;
-        assert done = '1' report "AES-128 TIMEOUT: Sinal 'done' nao foi ativado." severity error;
-        
-        wait until falling_edge(clk); -- Meio clock para garantir estabilidade do sinal
+        assert done = '1' report "AES-128 CRIPTO TIMEOUT." severity error;
+        wait until falling_edge(clk); 
 
         assert ciphertext = FIPS_EXPECTED_128(10)
-            report "AES-128 FALHA | Esperado: " & to_hstring(FIPS_EXPECTED_128(10)) & 
-                   " | Obtido: " & to_hstring(ciphertext) severity error;
+            report "AES-128 CRIPTO FALHA | Obtido: " & to_hstring(ciphertext) severity error;
+        report "Teste AES-128 Criptografia CONCLUIDO!" severity note;
+        wait for 100 ns;
 
-        report "Teste AES-128 CONCLUIDO!" severity note;
+        -- ===================================================================
+        -- TESTE AES-128: DESCRIPTOGRAFIA
+        -- ===================================================================
+        report "INICIANDO TESTE AES-128 (DESCRIPTOGRAFIA)" severity note;
+
+        rst_a <= '1';
+        wait until rising_edge(clk);
+        rst_a <= '0';
+        wait until rising_edge(clk);
+
+        op        <= '1'; -- Muda a operação
+        user_text <= FIPS_EXPECTED_128(10); -- Entra com o texto cifrado!
+
+        init <= '1';
+        wait until rising_edge(clk);
+        init <= '0';
+
+        wait until done = '1' for 3000 ns;
+        assert done = '1' report "AES-128 DECRIPTO TIMEOUT." severity error;
+        wait until falling_edge(clk); 
+
+        assert ciphertext = ORIGINAL_TEXT
+            report "AES-128 DECRIPTO FALHA | Obtido: " & to_hstring(ciphertext) severity error;
+        report "Teste AES-128 Descriptografia CONCLUIDO!" severity note;
         wait for 100 ns;
 
 
         -- ===================================================================
-        -- TESTE SIMPLIFICADO: APENAS RESULTADO FINAL (AES-192)
+        -- TESTE AES-192: ENCRIPTAÇÃO
         -- ===================================================================
         report "--------------------------------------------------------" severity note;
-        report "INICIANDO TESTE SIMPLIFICADO (AES-192 FIPS)" severity note;
+        report "INICIANDO TESTE AES-192 (CRIPTOGRAFIA)" severity note;
         report "--------------------------------------------------------" severity note;
 
         rst_a <= '1';
@@ -139,7 +164,7 @@ begin
 
         aes_type  <= "01";
         op        <= '0';
-        user_text <= x"00112233445566778899aabbccddeeff";
+        user_text <= ORIGINAL_TEXT;
         user_key  <= x"000102030405060708090a0b0c0d0e0f1011121314151617" & (63 downto 0 => '0');
 
         init <= '1';
@@ -147,23 +172,46 @@ begin
         init <= '0';
 
         wait until done = '1' for 5000 ns;
-        assert done = '1' report "AES-192 TIMEOUT: Sinal 'done' nao foi ativado." severity error;
-        
+        assert done = '1' report "AES-192 CRIPTO TIMEOUT." severity error;
         wait until falling_edge(clk);
 
         assert ciphertext = FIPS_EXPECTED_192(12)
-            report "AES-192 FALHA | Esperado: " & to_hstring(FIPS_EXPECTED_192(12)) & 
-                   " | Obtido: " & to_hstring(ciphertext) severity error;
+            report "AES-192 CRIPTO FALHA | Obtido: " & to_hstring(ciphertext) severity error;
+        report "Teste AES-192 Criptografia CONCLUIDO!" severity note;
+        wait for 100 ns;
 
-        report "Teste AES-192 CONCLUIDO!" severity note;
+        -- ===================================================================
+        -- TESTE AES-192: DESCRIPTOGRAFIA
+        -- ===================================================================
+        report "INICIANDO TESTE AES-192 (DESCRIPTOGRAFIA)" severity note;
+
+        rst_a <= '1';
+        wait until rising_edge(clk);
+        rst_a <= '0';
+        wait until rising_edge(clk);
+
+        op        <= '1';
+        user_text <= FIPS_EXPECTED_192(12); -- Injeta cifrado
+
+        init <= '1';
+        wait until rising_edge(clk);
+        init <= '0';
+
+        wait until done = '1' for 5000 ns;
+        assert done = '1' report "AES-192 DECRIPTO TIMEOUT." severity error;
+        wait until falling_edge(clk); 
+
+        assert ciphertext = ORIGINAL_TEXT
+            report "AES-192 DECRIPTO FALHA | Obtido: " & to_hstring(ciphertext) severity error;
+        report "Teste AES-192 Descriptografia CONCLUIDO!" severity note;
         wait for 100 ns;
 
 
         -- ===================================================================
-        -- TESTE SIMPLIFICADO: APENAS RESULTADO FINAL (AES-256)
+        -- TESTE AES-256: ENCRIPTAÇÃO
         -- ===================================================================
         report "--------------------------------------------------------" severity note;
-        report "INICIANDO TESTE SIMPLIFICADO (AES-256 FIPS)" severity note;
+        report "INICIANDO TESTE AES-256 (CRIPTOGRAFIA)" severity note;
         report "--------------------------------------------------------" severity note;
 
         rst_a <= '1';
@@ -173,7 +221,7 @@ begin
 
         aes_type  <= "10";
         op        <= '0';
-        user_text <= x"00112233445566778899aabbccddeeff";
+        user_text <= ORIGINAL_TEXT;
         user_key  <= x"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
         init <= '1';
@@ -181,15 +229,38 @@ begin
         init <= '0';
 
         wait until done = '1' for 3000 ns;
-        assert done = '1' report "AES-256 TIMEOUT: Sinal 'done' nao foi ativado." severity error;
-        
+        assert done = '1' report "AES-256 CRIPTO TIMEOUT." severity error;
         wait until falling_edge(clk);
 
         assert ciphertext = FIPS_EXPECTED_256(14)
-            report "AES-256 FALHA | Esperado: " & to_hstring(FIPS_EXPECTED_256(14)) & 
-                   " | Obtido: " & to_hstring(ciphertext) severity error;
+            report "AES-256 CRIPTO FALHA | Obtido: " & to_hstring(ciphertext) severity error;
+        report "Teste AES-256 Criptografia CONCLUIDO!" severity note;
+        wait for 100 ns;
 
-        report "Teste AES-256 CONCLUIDO!" severity note;
+        -- ===================================================================
+        -- TESTE AES-256: DESCRIPTOGRAFIA
+        -- ===================================================================
+        report "INICIANDO TESTE AES-256 (DESCRIPTOGRAFIA)" severity note;
+
+        rst_a <= '1';
+        wait until rising_edge(clk);
+        rst_a <= '0';
+        wait until rising_edge(clk);
+
+        op        <= '1';
+        user_text <= FIPS_EXPECTED_256(14); -- Injeta cifrado
+
+        init <= '1';
+        wait until rising_edge(clk);
+        init <= '0';
+
+        wait until done = '1' for 3000 ns;
+        assert done = '1' report "AES-256 DECRIPTO TIMEOUT." severity error;
+        wait until falling_edge(clk); 
+
+        assert ciphertext = ORIGINAL_TEXT
+            report "AES-256 DECRIPTO FALHA | Obtido: " & to_hstring(ciphertext) severity error;
+        report "Teste AES-256 Descriptografia CONCLUIDO!" severity note;
         
         std.env.stop;
     end process;
