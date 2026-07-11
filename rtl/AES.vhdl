@@ -29,6 +29,7 @@ architecture behavior of AES is
     signal s_rcon_idx      : integer range 1 to 10;
     signal s_keyWord       : integer;
     signal s_s_subbytes    : std_logic;
+    signal s_s_invsubbytes : std_logic;
 
 begin
 
@@ -37,6 +38,7 @@ begin
             clk           => clk,
             init          => init,
             rst_a         => rst_a,
+            op            => op,
             done          => done,
             aes_type      => aes_type,
             round_counter => s_round_counter,
@@ -48,13 +50,15 @@ begin
             R_WORD        => s_R_WORD,
             rcon_idx      => s_rcon_idx,
             keyWord       => s_keyWord,
-            s_subbytes    => s_s_subbytes
+            s_subbytes    => s_s_subbytes,
+            s_invsubbytes => s_s_invsubbytes
         );
 
     inst_AES_BO: entity work.AES_BO(behavior)
         port map(
             clk           => clk,
             rst_a         => rst_a,
+            op            => op,
             user_key      => user_key,
             user_text     => user_text,
             cipher_text   => cipher_text,
@@ -69,7 +73,8 @@ begin
             R_WORD        => s_R_WORD,
             rcon_idx      => s_rcon_idx,
             keyWord       => s_keyWord,
-            s_subbytes    => s_s_subbytes
+            s_subbytes    => s_s_subbytes,
+            s_invsubbytes => s_s_invsubbytes
         );
 
 end architecture behavior;

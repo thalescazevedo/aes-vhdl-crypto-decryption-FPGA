@@ -9,6 +9,7 @@ entity AES_BC is
         clk           : in  std_logic;      -- clk
         init          : in  std_logic;      -- iniciar
         rst_a         : in  std_logic;
+        op            : in  std_logic;
         aes_type      : in  std_logic_vector(1 downto 0);
         done          : out std_logic;   
         
@@ -21,7 +22,8 @@ entity AES_BC is
         R_WORD        : out std_logic;
         rcon_idx      : out integer range 1 to 10;
         keyWord       : out integer;
-        s_subbytes    : out std_logic
+        s_subbytes    : out std_logic;
+        s_invsubbytes : out std_logic
     );
 end entity AES_BC;
 
@@ -30,7 +32,7 @@ architecture behavior of AES_BC is
     signal EAtual  : estado := S0;
     signal PEstado : estado := S0;
     
-    signal s_counter : unsigned(3 downto 0) := (others => '0');
+    signal s_counter        : unsigned(3 downto 0) := (others => '0');
     signal number_of_rounds : integer := 10;
     signal s_keyword        : integer := 4;
     signal flagmod0         : std_logic;
@@ -46,7 +48,7 @@ begin
     rcon_idx            <= s_rconIDX;
     keyword             <= s_keyWord;
 
-    CRG: process (clk, rst_a)
+    CRG: process (clk, rst_a, op)
     BEGIN
         if rst_a = '1' then
             EAtual <= S0;
@@ -58,12 +60,20 @@ begin
             EAtual <= PEstado;
 
             if EAtual = S0 then 
-                s_counter <= "0000";
+                if op = '0' then
+                    s_counter <= "0000";
+                else
+                    s_counter <= to_unsigned(calc_nestados(aes_type)+1, 4);
+                end if;
 
             elsif EAtual = S1 then
                 s_keyword <= get_nk(aes_type);
                 s_rconIDX <= 1;
-                s_counter <= "0001";
+                if op = '0' then
+                    s_counter <= "0001";
+                else
+                    s_counter <= s_counter - 1;
+                end if;
 
             elsif EAtual = KE_EXP3 then
                 s_keyword <= s_keyword + 1;
@@ -74,15 +84,21 @@ begin
                 end if;
 
             elsif EAtual = SC2 then
-                if to_integer(s_counter) < number_of_rounds then
-                    s_counter <= s_counter + 1;
+                if op = '0' then
+                    if to_integer(s_counter) < number_of_rounds then
+                        s_counter <= s_counter + 1;
+                    end if;
+                else
+                    if to_integer(s_counter) > 0 then
+                        s_counter <= s_counter - 1;
+                    end if;
                 end if;
             
             end if;
         end if;
     end process;
         
-    LPE: process (EAtual, init, s_counter, number_of_rounds, s_keyword, aes_type, flagmod0, flagmod4)
+    LPE: process (EAtual, init, s_counter, number_of_rounds, s_keyword, aes_type, flagmod0, flagmod4, op)
     BEGIN
         CASE EAtual is
             when S0 =>
@@ -122,10 +138,18 @@ begin
                 PEstado <= SC2;
 
             when SC2 =>
-                if to_integer(s_counter) >= number_of_rounds then
-                    PEstado <= Sresult;
+                if op = '0' then
+                    if to_integer(s_counter) >= number_of_rounds then
+                        PEstado <= Sresult;
+                    else
+                        PEstado <= OPWAIT; 
+                    end if;
                 else
-                    PEstado <= OPWAIT; 
+                    if to_integer(s_counter) <= 0 then
+                        PEstado <= Sresult;
+                    else
+                        PEstado <= OPWAIT; 
+                    end if;
                 end if;
             
             when Sresult => 
@@ -136,7 +160,7 @@ begin
         end case;    
     end process;
     
-    LS: process (EAtual, s_counter, number_of_rounds)
+    LS: process (EAtual, s_counter, number_of_rounds, op)
     BEGIN
         rp              <= '0';
         done            <= '0';
@@ -145,6 +169,7 @@ begin
         R_WORD          <= '0';
         read_memory     <= '0';
         s_subbytes      <= '0';
+        s_invsubbytes   <= '0';
 
         CASE EAtual is
             when S0 => null;
@@ -164,17 +189,27 @@ begin
                 R_WORD <= '1';
 
             when OPWAIT =>
-                s_subbytes <= '1';
+                if op = '0' then
+                    s_subbytes <= '1';
+                else
+                    s_invsubbytes <= '1';
+                end if;
 
             when SC1 => 
                 null;
 
             when SC2 => 
                 rp <= '1';
-                if to_integer(s_counter) = number_of_rounds then
-                    ilr <= '1';
+                if op = '0' then
+                    if to_integer(s_counter) = number_of_rounds then
+                        ilr <= '1';
+                    end if;
+                else
+                    if to_integer(s_counter) = 1 then
+                        ilr <= '1';
+                    end if;
                 end if;
-            
+
             when Sresult => 
                 done <= '1';
                
