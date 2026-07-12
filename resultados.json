@@ -1,14 +1,6 @@
 {
-    "grupo": {
-        "nome": "grupo A",
-        "alunos": [
-          {"nome": "Artur de Faria Rodrigo", "matricula": "25200395"},
-          {"nome": "João Pedro Floriano", "matricula": "25200369"},
-          {"nome": "Nicolas de Brito Mafra", "matricula": "25200389"},
-          {"nome": "Pedro Zumstein Bilac", "matricula": "25201469"},
-          {"nome": "Thales Campos de Azevedo", "matricula": "25201474"},
-          {"nome": "Thasio Santos Silva", "matricula": "25202238"}
-        ]
+    "desenvolvedor": {
+        "nome": "Thales Campos de Azevedo"
     },
     "quartus": {
         "os": "Ubuntu (imagem Quartus II)",
@@ -19,12 +11,13 @@
         }
     },
     "utilizacao": {
-        "total combinational functions": 36005,
-        "dedicated logic registers": 2056,
-        "total pins": 518
+        "total combinational functions": 6861,
+        "dedicated logic registers": 2227,
+        "total pins": 519,
+        "total memory bits": 73728
     },
     "atraso": {
-        "Fmax": 125.63,
+        "Fmax": 87.6,
         "unidade": "MHz"
     }
 }
